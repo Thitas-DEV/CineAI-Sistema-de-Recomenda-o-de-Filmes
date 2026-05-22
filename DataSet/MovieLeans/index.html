@@ -445,7 +445,7 @@
       <div class="field autocomplete-wrap">
         <label>Título do filme</label>
         <input type="text" id="cb-title" placeholder="Ex: Toy Story (1995)" autocomplete="off"
-               oninput="autocomplete(this, 'cb-ac')"/>
+               oninput="handleAutocomplete(this, 'cb-ac')"/>
         <div class="autocomplete-list" id="cb-ac"></div>
       </div>
       <div class="field" style="max-width:100px">
@@ -477,7 +477,7 @@
       <div class="field autocomplete-wrap">
         <label>Título do filme</label>
         <input type="text" id="hy-title" placeholder="Ex: Matrix (1999)" autocomplete="off"
-               oninput="autocomplete(this, 'hy-ac')"/>
+               oninput="handleAutocomplete(this, 'hy-ac')"/>
         <div class="autocomplete-list" id="hy-ac"></div>
       </div>
       <div class="field" style="max-width:200px">
@@ -515,6 +515,27 @@
 const API = 'http://localhost:8000';
 let acTimeout = null;
 let currentMode = 'content';
+let cachedMovies = []; // Browser cache for instant autocomplete
+
+// Normalize string for local search
+function normalizeStr(str) {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+// ── Cache Load ───────────────────────────────────────────────────────────
+async function loadMovieCache() {
+  try {
+    const r = await fetch(`${API}/movies/all`);
+    if (r.ok) {
+      cachedMovies = await r.json();
+      console.log(`Carregados ${cachedMovies.length} filmes no cache do navegador.`);
+    }
+  } catch(e) {
+    console.warn("Falha ao carregar cache de filmes. O servidor ainda pode estar iniciando.", e);
+    setTimeout(loadMovieCache, 5000); // Retry later if server isn't ready
+  }
+}
+loadMovieCache();
 
 // ── Stats ────────────────────────────────────────────────────────────────
 async function loadStats() {
@@ -524,7 +545,9 @@ async function loadStats() {
     document.getElementById('statMovies').textContent  = d.totalMovies.toLocaleString('pt-BR');
     document.getElementById('statRatings').textContent = d.totalRatings.toLocaleString('pt-BR');
     document.getElementById('statUsers').textContent   = d.totalUsers.toLocaleString('pt-BR');
-  } catch {}
+  } catch {
+    setTimeout(loadStats, 5000); // Retry stats if server not ready
+  }
 }
 loadStats();
 
@@ -540,20 +563,37 @@ function switchMode(mode) {
 }
 
 // ── Autocomplete ─────────────────────────────────────────────────────────
-async function autocomplete(input, listId) {
+async function handleAutocomplete(input, listId) {
   clearTimeout(acTimeout);
   const list = document.getElementById(listId);
   if (input.value.length < 2) { list.innerHTML = ''; return; }
 
-  acTimeout = setTimeout(async () => {
-    try {
-      const r = await fetch(`${API}/search?q=${encodeURIComponent(input.value)}&limit=8`);
-      const movies = await r.json();
-      list.innerHTML = movies.map(m =>
-        `<div onclick="selectTitle('${m.title.replace(/'/g,"\\'")}', '${input.id}', '${listId}')">${m.title}</div>`
-      ).join('');
-    } catch { list.innerHTML = ''; }
-  }, 300);
+  acTimeout = setTimeout(() => {
+    if (cachedMovies.length === 0) {
+      list.innerHTML = '<div style="color:var(--dim)">Carregando banco de dados...</div>';
+      return;
+    }
+    
+    const query = normalizeStr(input.value);
+    
+    // Instant local filter (cachedMovies is already pre-sorted by popularity!)
+    const matches = [];
+    for (let i = 0; i < cachedMovies.length; i++) {
+      if (cachedMovies[i].norm.includes(query)) {
+        matches.push(cachedMovies[i]);
+        if (matches.length >= 8) break; // Limit to 8 results
+      }
+    }
+    
+    if (matches.length === 0) {
+      list.innerHTML = '<div style="color:var(--dim)">Nenhum filme encontrado</div>';
+      return;
+    }
+
+    list.innerHTML = matches.map(m =>
+      `<div onclick="selectTitle('${m.title.replace(/'/g,"\\'")}', '${input.id}', '${listId}')">${m.title}</div>`
+    ).join('');
+  }, 50); // almost instant
 }
 
 function selectTitle(title, inputId, listId) {
@@ -603,14 +643,22 @@ function showError(msg) { const el = document.getElementById('errorMsg'); el.tex
 function hideError()    { document.getElementById('errorMsg').classList.remove('show'); }
 
 // ── Actions ──────────────────────────────────────────────────────────────
+
+// Strip the year e.g. " (1995)" so it doesn't break pandas regex search in the backend
+function cleanTitleForAPI(title) {
+  return title.replace(/\s*\(\d{4}\)\s*$/, '').trim();
+}
+
 async function runContent() {
   const title = document.getElementById('cb-title').value.trim();
   const n     = document.getElementById('cb-n').value;
   if (!title) { showError('Digite o nome de um filme.'); return; }
 
+  const searchTitle = cleanTitleForAPI(title);
+
   showLoading();
   try {
-    const r = await fetch(`${API}/recommend/content?title=${encodeURIComponent(title)}&n=${n}`);
+    const r = await fetch(`${API}/recommend/content?title=${encodeURIComponent(searchTitle)}&n=${n}`);
     if (!r.ok) { const e = await r.json(); throw new Error(e.detail); }
     const d = await r.json();
     hideLoading();
@@ -641,9 +689,11 @@ async function runHybrid() {
   const n     = document.getElementById('hy-n').value;
   if (!title || !uid) { showError('Preencha o título e o User ID.'); return; }
 
+  const searchTitle = cleanTitleForAPI(title);
+
   showLoading();
   try {
-    const r = await fetch(`${API}/recommend/hybrid?title=${encodeURIComponent(title)}&userId=${uid}&n=${n}`);
+    const r = await fetch(`${API}/recommend/hybrid?title=${encodeURIComponent(searchTitle)}&userId=${uid}&n=${n}`);
     if (!r.ok) { const e = await r.json(); throw new Error(e.detail); }
     const d = await r.json();
     hideLoading();

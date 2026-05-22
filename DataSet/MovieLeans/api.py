@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # CONFIG
 # ─────────────────────────────────────────────────────────────
 
-BASE = r'D:\Code\Python\especialista_filmes\DataSet\MovieLeans'
+BASE = r'C:\Users\esdra\Downloads\CineAI-Sistema-de-Recomenda-o-de-Filmes-main\CineAI-Sistema-de-Recomenda-o-de-Filmes-main\DataSet\MovieLeans'
 
 app = FastAPI(title="CineAI – Movie Recommender")
 
@@ -79,6 +79,14 @@ df['soup'] = (
     +
     df['tag']
 )
+
+print("⏳ Normalizando títulos...", flush=True)
+def normalize_text(text):
+    import unicodedata
+    text = str(text).lower().strip()
+    return unicodedata.normalize('NFKD', text).encode('ascii', errors='ignore').decode('utf-8')
+
+df['title_norm'] = df['title'].apply(normalize_text)
 
 df = df.reset_index(drop=True)
 
@@ -195,19 +203,10 @@ print(f"👥 Usuários: {len(user_ids)}")
 # HELPERS
 # ─────────────────────────────────────────────────────────────
 
-def normalize_text(text):
-
+def normalize_text_query(text):
+    import unicodedata
     text = str(text).lower().strip()
-
-    text = unicodedata.normalize(
-        'NFKD',
-        text
-    ).encode(
-        'ascii',
-        errors='ignore'
-    ).decode('utf-8')
-
-    return text
+    return unicodedata.normalize('NFKD', text).encode('ascii', errors='ignore').decode('utf-8')
 
 
 def _movie_info(movie_id: int):
@@ -249,11 +248,7 @@ def root():
 @app.get("/search")
 def search(q: str, limit: int = 10):
 
-    key = normalize_text(q)
-
-    df['title_norm'] = df['title'].apply(
-        normalize_text
-    )
+    key = normalize_text_query(q)
 
     matches = df[
         df['title_norm'].str.contains(
@@ -284,11 +279,7 @@ def recommend_content(
     n: int = 10
 ):
 
-    key = normalize_text(title)
-
-    df['title_norm'] = df['title'].apply(
-        normalize_text
-    )
+    key = normalize_text_query(title)
 
     matches = df[
         df['title_norm'].str.contains(
@@ -413,11 +404,7 @@ def recommend_hybrid(
     n: int = 10
 ):
 
-    key = normalize_text(title)
-
-    df['title_norm'] = df['title'].apply(
-        normalize_text
-    )
+    key = normalize_text_query(title)
 
     matches = df[
         df['title_norm'].str.contains(
@@ -541,6 +528,22 @@ def stats():
         "svdMovies": len(movie_ids),
         "svdUsers": len(user_ids)
     }
+
+# ─────────────────────────────────────────────────────────────
+# BROWSER CACHE LIST
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/movies/all")
+def all_movies_cached():
+    # Returns a minimal list of all movies, pre-sorted by popularity
+    # so the frontend can cache it and do instant autocomplete
+    sorted_df = df.sort_values(by=['num_ratings', 'avg_rating'], ascending=False)
+    
+    # We only need title for the autocomplete logic, returning title and a normalized version for fast local search
+    return [
+        {"title": row['title'], "norm": row['title_norm']}
+        for _, row in sorted_df.iterrows()
+    ]
 
 # ─────────────────────────────────────────────────────────────
 # RUN
