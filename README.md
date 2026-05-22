@@ -334,4 +334,4 @@ Dataset MovieLens disponível para uso não-comercial conforme os [termos do Gro
 
 ---
 
-> Desenvolvido como projeto acadêmico — Engenharia da Computação · UniNobre
+> Desenvolvido como projeto acadêmico — Engenharia da Computação · UNIFAN 
