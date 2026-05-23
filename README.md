@@ -1,337 +1,203 @@
-# 🎬 CineAI — Sistema de Recomendação de Filmes
+# 🎬 CineAI — Sistema Avançado de Recomendação de Filmes
 
-Sistema de recomendação de filmes com três estratégias distintas: **Content-Based Filtering**, **Collaborative Filtering via SVD** e **Hybrid Recommender**. Construído sobre o dataset MovieLens com backend em FastAPI e interface web.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version">
+  <img src="https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Machine%20Learning-Scikit--Learn-orange" alt="Scikit-Learn">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+</p>
+
+O **CineAI** é um sistema de recomendação de filmes inteligente que implementa três estratégias distintas: **Content-Based Filtering**, **Collaborative Filtering via SVD** e um **Recomendador Híbrido**. Construído sobre a robusta base de dados do *MovieLens*, ele conta com um backend veloz em FastAPI e uma interface web interativa.
 
 ---
 
 ## 📋 Índice
 
-- [Visão Geral](#visão-geral)
-- [Tecnologias](#tecnologias)
-- [Dataset](#dataset)
-- [Estrutura do Projeto](#estrutura-do-projeto)
-- [Instalação](#instalação)
-- [Como Executar](#como-executar)
-- [Endpoints da API](#endpoints-da-api)
-- [Estratégias de Recomendação](#estratégias-de-recomendação)
-- [Arquitetura](#arquitetura)
+- [✨ Funcionalidades](#-funcionalidades)
+- [🧠 Visão Geral e Algoritmos](#-visão-geral-e-algoritmos)
+- [🛠️ Tecnologias](#️-tecnologias)
+- [📂 Estrutura do Projeto](#-estrutura-do-projeto)
+- [🚀 Instalação e Execução (Windows)](#-instalação-e-execução-windows)
+- [🐧 Inicialização Manual (Linux / macOS)](#-inicialização-manual-linux--macos)
+- [🌐 Endpoints da API](#-endpoints-da-api)
+- [🏗️ Arquitetura](#️-arquitetura)
+- [🤝 Como Contribuir](#-como-contribuir)
 
 ---
 
-## Visão Geral
+## ✨ Funcionalidades
 
-O CineAI implementa as três principais abordagens da literatura de sistemas de recomendação sobre um dataset real de larga escala:
+- **Múltiplos Motores de Recomendação:** Escolha entre recomendações baseadas no perfil do filme, histórico do usuário, ou uma mescla dos dois.
+- **Busca Rápida (Autocomplete):** Pesquise filmes rapidamente com uma API indexada.
+- **Configuração Descomplicada:** Script `start.bat` para iniciar o projeto com dois cliques.
+- **Escalável:** Testado e aprovado com uma base de dados de **~30 milhões de avaliações**.
 
-| Estratégia | Base | Quando usar |
+---
+
+## 🧠 Visão Geral e Algoritmos
+
+O CineAI implementa as três principais abordagens da literatura de sistemas de recomendação:
+
+| Estratégia | Base de Cálculo | Quando Usar |
 |---|---|---|
-| **Content-Based** | Gêneros + tags textuais | Usuário sem histórico, busca por similaridade de conteúdo |
-| **Collaborative Filtering** | Histórico de ratings (SVD) | Usuário com histórico, descoberta de preferências latentes |
-| **Hybrid** | Combinação 50/50 normalizada | Melhor cobertura geral |
+| **Content-Based** | Gêneros + tags textuais via TF-IDF | Quando o usuário não possui histórico. Busca por similaridade de conteúdo e "clima" do filme. |
+| **Collaborative Filtering** | Histórico de avaliações via Truncated SVD | Quando o usuário já possui histórico. Focado em descoberta de preferências latentes baseadas em usuários parecidos. |
+| **Híbrido** | Combinação 50/50 normalizada | Excelente para recomendações gerais e de alta precisão. |
 
-**Escala do dataset:**
-- 87.585 filmes
-- 200.948 usuários
-- ~30 milhões de ratings
-
----
-
-## Tecnologias
-
-| Camada | Tecnologia | Versão |
-|---|---|---|
-| Linguagem | Python | 3.9+ |
-| API REST | FastAPI | latest |
-| Servidor ASGI | Uvicorn | latest |
-| Manipulação de dados | Pandas | latest |
-| Machine Learning | Scikit-learn | latest |
-| Álgebra linear | NumPy | latest |
-| Matrizes esparsas | SciPy | latest |
-| Frontend | HTML + CSS + JavaScript | — |
+**Escala suportada pelo dataset MovieLens utilizado:**
+- 🎬 87.585 filmes catalogados
+- 👥 200.948 usuários únicos
+- ⭐ ~30 milhões de classificações (*ratings*)
 
 ---
 
-## Dataset
+## 🛠️ Tecnologias
 
-Este projeto utiliza o **[MovieLens Dataset](https://grouplens.org/datasets/movielens/)**, mantido pelo GroupLens Research Lab da Universidade de Minnesota.
+O projeto adota uma *stack* de processamento de dados e desenvolvimento backend moderna:
 
-### Download
-
-Acesse: https://grouplens.org/datasets/movielens/ e baixe a versão **ml-latest** (dataset completo).
-
-### Arquivos necessários
-
-| Arquivo | Descrição | Tamanho aprox. |
-|---|---|---|
-| `movies.csv` | Catálogo de filmes (movieId, title, genres) | ~3 MB |
-| `ratings.csv` | Ratings dos usuários (userId, movieId, rating, timestamp) | ~900 MB |
-| `tags.csv` | Tags textuais atribuídas por usuários | ~70 MB |
-| `links.csv` | Correspondência movieId ↔ imdbId ↔ tmdbId | ~2 MB |
-
-> ⚠️ O arquivo `ratings.csv` tem ~900 MB. O carregamento inicial leva entre 30–60 segundos dependendo da máquina.
+- **Linguagem:** Python 3.9+
+- **API REST & Servidor:** FastAPI + Uvicorn
+- **Manipulação de Dados:** Pandas & NumPy
+- **Machine Learning & Matemática:** Scikit-learn & SciPy
+- **Frontend:** Vanilla HTML, CSS e JavaScript
 
 ---
 
-## Estrutura do Projeto
+## 📂 Estrutura do Projeto
 
-```
-especialista_filmes/
+A arquitetura de pastas foi desenhada para separar claramente as camadas do software:
+
+```text
+cineai/
 │
-├── DataSet/
-│   └── MovieLeans/
-│       ├── api.py          ← Backend FastAPI (ponto de entrada)
-│       ├── index.html      ← Frontend web
-│       ├── movies.csv      ← Dataset (baixar separado)
-│       ├── ratings.csv     ← Dataset (baixar separado)
-│       ├── tags.csv        ← Dataset (baixar separado)
-│       ├── links.csv       ← Dataset (baixar separado)
-│       └── README.txt      ← Documentação original do MovieLens
+├── backend/
+│   ├── api.py              ← API REST e core de recomendação
+│   ├── Especialista.py     ← Script para testes e manipulação da lógica
+│   └── requirements.txt    ← Lista de dependências do Python
 │
-└── README.md
+├── frontend/
+│   └── index.html          ← Interface de usuário (Painel Web)
+│
+├── dataset/
+│   ├── movies.csv          ← Dados dos filmes (requer download)
+│   ├── ratings.csv         ← Avaliações dos usuários (requer download)
+│   ├── tags.csv            ← Metadados textuais (requer download)
+│   ├── links.csv           ← IDs de correlação (requer download)
+│   └── README.txt          ← Instruções de alocação de dados
+│
+├── start.bat               ← 🚀 Script de auto-inicialização (Windows)
+├── .env.example            ← Modelo para variáveis de ambiente
+└── README.md               ← Documentação principal
 ```
 
 ---
 
-## Instalação
+## 🚀 Instalação e Execução (Windows)
 
-### Pré-requisitos
+Automatizamos todo o processo para que você possa focar no que importa: usar a aplicação.
 
-- Python 3.9 ou superior
-- pip
+### 1. Clonando o Repositório
 
-### 1. Clone o repositório
-
+No seu terminal, execute:
 ```bash
 git clone https://github.com/seu-usuario/cineai.git
 cd cineai
 ```
 
-### 2. Instale as dependências
+### 2. Download do Dataset
+
+Para evitar um repositório gigabyte, o banco de dados deve ser baixado de forma independente:
+1. Acesse o portal [GroupLens](https://grouplens.org/datasets/movielens/).
+2. Baixe a versão **ml-latest** (dataset completo).
+3. Extraia os arquivos `movies.csv`, `ratings.csv`, `tags.csv` e `links.csv` diretamente para dentro da pasta `dataset/` no seu projeto.
+
+> **Dica Pro (Opcional):** Prefere deixar os arquivos CSV em um HD externo ou outra pasta? Sem problemas! Crie um arquivo `.env` na raiz do projeto (use o `.env.example` de base) e preencha a variável `DATASET_PATH` com o caminho desejado.
+
+### 3. A Mágica Acontece (`start.bat`)
+
+Vá até a pasta raiz do projeto e dê **dois cliques no arquivo `start.bat`**.
+O script irá automaticamente:
+1. Verificar e instalar as bibliotecas (se necessário).
+2. Iniciar o servidor FastAPI num terminal interativo.
+3. Abrir o frontend no seu navegador principal.
+
+> ⚠️ **Aviso de Carregamento:** O processamento de matrizes de 30 milhões de linhas leva cerca de 30-60 segundos na primeira execução. O painel web estará operacional assim que a mensagem `✅ Sistema pronto!` surgir no terminal preto.
+
+---
+
+## 🐧 Inicialização Manual (Linux / macOS)
+
+Caso esteja num ecossistema Unix, execute manualmente:
 
 ```bash
-pip install fastapi uvicorn scikit-learn scipy numpy pandas
+# 1. Instale as dependências essenciais
+pip install -r backend/requirements.txt
+
+# 2. Suba o servidor backend
+cd backend
+uvicorn api:app --host 0.0.0.0 --port 8000
 ```
-
-Ou via arquivo de requirements:
-
-```bash
-pip install -r requirements.txt
-```
-
-**`requirements.txt`:**
-```
-fastapi
-uvicorn
-scikit-learn
-scipy
-numpy
-pandas
-```
-
-### 3. Baixe o dataset
-
-Acesse https://grouplens.org/datasets/movielens/, baixe o **ml-latest** e extraia os arquivos `movies.csv`, `ratings.csv`, `tags.csv` e `links.csv` dentro de `DataSet/MovieLeans/`.
-
-### 4. Ajuste o caminho no `api.py`
-
-Abra o `api.py` e altere a variável `BASE` na linha 8 para o caminho absoluto da pasta no seu sistema:
-
-```python
-# Windows
-BASE = r'C:\caminho\para\DataSet\MovieLeans'
-
-# Linux / macOS
-BASE = '/caminho/para/DataSet/MovieLeans'
-```
+Com o servidor rodando, basta dar um duplo clique no arquivo `frontend/index.html` ou abri-lo pelo seu navegador favorito.
 
 ---
 
-## Como Executar
+## 🌐 Endpoints da API
 
-### 1. Inicie o servidor
+A documentação interativa Swagger/Redoc fica disponível em `http://localhost:8000/docs` assim que a aplicação sobe. Abaixo um resumo das rotas principais:
 
-```bash
-# Windows
-cd DataSet\MovieLeans
-python api.py
+### Base URL: `http://localhost:8000`
 
-# Linux / macOS
-cd DataSet/MovieLeans
-python3 api.py
-```
+- `GET /stats`  
+  Retorna um snapshot JSON com métricas de volume da base de dados.
+  
+- `GET /search?q={termo}&limit={n}`  
+  Endpoint leve para auto-complete de pesquisa por título de filmes.
 
-### 2. Aguarde o carregamento
+- `GET /recommend/content?title={nome}&n={n}`  
+  *Content-based filtering*. Traz recomendações puramente baseadas em análise textual (gêneros + tags) comparada ao filme pesquisado.
 
-O terminal vai exibir o progresso:
+- `GET /recommend/collaborative?userId={id}&n={n}`  
+  *Collaborative filtering*. Fornece recomendações baseadas nos padrões latentes descobertos via SVD para um usuário específico. *(Requer usuários com >20 avaliações)*.
 
-```
-⏳ Carregando datasets...
-⏳ Construindo matriz TF-IDF...
-⏳ Treinando SVD...
-✅ Sistema pronto!
-🎬 Filmes: 87585
-👥 Usuários: 200948
-INFO: Uvicorn running on http://0.0.0.0:8000
-```
-
-### 3. Acesse a interface
-
-Abra o arquivo `index.html` no navegador ou acesse:
-
-```
-http://localhost:8000
-```
+- `GET /recommend/hybrid?title={nome}&userId={id}&n={n}`  
+  O melhor dos dois mundos, ponderando 50% para conteúdo e 50% para a matriz colaborativa.
 
 ---
 
-## Endpoints da API
+## 🏗️ Arquitetura
 
-Base URL: `http://localhost:8000`
+O sistema adota uma estrutura cliente-servidor leve:
 
-### `GET /stats`
-Retorna estatísticas gerais do dataset carregado.
-
-```json
-{
-  "totalMovies": 87585,
-  "totalRatings": 33832162,
-  "totalUsers": 200948,
-  "svdMovies": 45000,
-  "svdUsers": 120000
-}
+```mermaid
+graph TD;
+    UI[Frontend HTML/JS] -->|Requisições HTTP| API[FastAPI REST]
+    API -->|TF-IDF| CB[Content-Based Engine]
+    API -->|Truncated SVD| CF[Collaborative Engine]
+    API --> HY[Hybrid Engine]
+    CB -.-> DB[(Dataset CSVs)]
+    CF -.-> DB
 ```
+
+*(As lógicas dos modelos residem em memória RAM da aplicação backend para prover latência mínima de requisição, carregando e vetorizando no evento de startup).*
 
 ---
 
-### `GET /search?q={query}&limit={n}`
-Busca filmes por título (usado no autocomplete).
+## 🤝 Como Contribuir
 
-| Parâmetro | Tipo | Padrão | Descrição |
-|---|---|---|---|
-| `q` | string | obrigatório | Texto para busca |
-| `limit` | int | 10 | Número máximo de resultados |
-
-```bash
-GET /search?q=toy&limit=5
-```
+Sinta-se livre para melhorar este projeto! Se você encontrar bugs, quiser otimizar o tempo de inicialização matricial, ou melhorar o layout web:
+1. Faça um *Fork* do repositório
+2. Crie uma branch para a sua feature (`git checkout -b feature/minha-feature`)
+3. Faça o commit das mudanças (`git commit -m 'feat: adiciona nova feature'`)
+4. Faça o Push (`git push origin feature/minha-feature`)
+5. Abra um *Pull Request*
 
 ---
 
-### `GET /recommend/content?title={title}&n={n}`
-Recomendação por similaridade de conteúdo (gêneros + tags).
+## 📄 Licença
 
-| Parâmetro | Tipo | Padrão | Descrição |
-|---|---|---|---|
-| `title` | string | obrigatório | Título exato do filme |
-| `n` | int | 10 | Número de recomendações |
-
-```bash
-GET /recommend/content?title=Toy Story (1995)&n=10
-```
+O código-fonte deste projeto é de uso aberto. No entanto, atente-se à licença do **MovieLens Dataset**, que é disponibilizado pelo *GroupLens Research* exclusivamente para fins não-comerciais. Consulte as regras em [grouplens.org](https://grouplens.org/datasets/movielens/).
 
 ---
-
-### `GET /recommend/collaborative?userId={id}&n={n}`
-Recomendação baseada no histórico de ratings do usuário via SVD.
-
-| Parâmetro | Tipo | Padrão | Descrição |
-|---|---|---|---|
-| `userId` | int | obrigatório | ID do usuário (precisa ter ≥ 20 ratings) |
-| `n` | int | 10 | Número de recomendações |
-
-```bash
-GET /recommend/collaborative?userId=1&n=10
-```
-
----
-
-### `GET /recommend/hybrid?title={title}&userId={id}&n={n}`
-Recomendação híbrida combinando content-based e collaborative (50/50).
-
-```bash
-GET /recommend/hybrid?title=Toy Story (1995)&userId=1&n=10
-```
-
----
-
-## Estratégias de Recomendação
-
-### Content-Based Filtering
-
-Vetoriza os metadados de cada filme (gêneros + tags dos usuários) usando **TF-IDF** e calcula a **similaridade de cosseno** entre o filme de referência e todos os outros. Não depende do histórico de nenhum usuário.
-
-```
-soup = genres + tags_agregadas
-      ↓
-TfidfVectorizer (max_features=10.000)
-      ↓
-Matriz esparsa (87585 × 10000)
-      ↓
-cosine_similarity(filme_alvo, todos_filmes)
-      ↓
-Top-N mais similares
-```
-
-### Collaborative Filtering (SVD)
-
-Constrói a matriz usuário-item esparsa e aplica **Truncated SVD** com 50 componentes latentes para capturar padrões de preferência que não estão explícitos no conteúdo dos filmes.
-
-```
-ratings.csv
-      ↓
-Filtragem (mínimo 20 ratings por usuário/filme)
-      ↓
-csr_matrix (usuarios × filmes)
-      ↓
-TruncatedSVD (k=50)  →  U (usuários), Vt (filmes)
-      ↓
-pred = U[user] @ Vt  →  score para cada filme
-      ↓
-Top-N com maior score (excluindo já avaliados)
-```
-
-### Hybrid
-
-Combina os dois scores com normalização min-max para torná-los comparáveis em escala:
-
-```
-score_hybrid = 0.5 × norm(content_score) + 0.5 × norm(cf_score)
-```
-
----
-
-## Arquitetura
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      index.html                         │
-│              (Frontend — HTML/CSS/JS)                   │
-│  ┌──────────┐  ┌───────────────┐  ┌──────────────────┐  │
-│  │ Content  │  │ Collaborative │  │     Hybrid       │  │
-│  │  tab     │  │     tab       │  │      tab         │  │
-│  └────┬─────┘  └──────┬────────┘  └────────┬─────────┘  │
-└───────┼───────────────┼────────────────────┼────────────┘
-        │    fetch()    │                    │
-        └───────────────┴────────────────────┘
-                        │ HTTP REST
-┌───────────────────────▼─────────────────────────────────┐
-│                   FastAPI (api.py)                       │
-│                                                         │
-│  /recommend/content   →  TF-IDF + cosine_similarity     │
-│  /recommend/collaborative  →  SVD (U @ Vt)              │
-│  /recommend/hybrid    →  norm(content) + norm(CF)        │
-│  /search              →  título lookup                   │
-│  /stats               →  métricas do dataset            │
-│                                                         │
-│  Modelos carregados em memória no startup               │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## Licença
-
-Dataset MovieLens disponível para uso não-comercial conforme os [termos do GroupLens](https://grouplens.org/datasets/movielens/).
-
----
-
-> Desenvolvido como projeto acadêmico — Engenharia da Computação · UNIFAN 
+<p align="center">
+  <i>Desenvolvido como projeto acadêmico — Engenharia da Computação · UNIFAN</i>
+</p>
