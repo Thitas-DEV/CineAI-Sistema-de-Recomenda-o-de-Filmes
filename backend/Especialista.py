@@ -1,7 +1,12 @@
 import pandas as pd
 import os
 
-BASE = r'D:\Code\Python\especialista_filmes\DataSet\MovieLeans'
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DEFAULT_BASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dataset')
+BASE = os.getenv("DATASET_PATH", DEFAULT_BASE)
 
 ratings = pd.read_csv(os.path.join(BASE, 'ratings.csv'))
 

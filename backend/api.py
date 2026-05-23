@@ -16,7 +16,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # CONFIG
 # ─────────────────────────────────────────────────────────────
 
-BASE = r'C:\Users\esdra\Downloads\CineAI-Sistema-de-Recomenda-o-de-Filmes-main\CineAI-Sistema-de-Recomenda-o-de-Filmes-main\DataSet\MovieLeans'
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Define o diretório do dataset. Por padrão, ele volta uma pasta e procura em 'dataset'
+DEFAULT_BASE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dataset')
+BASE = os.getenv("DATASET_PATH", DEFAULT_BASE)
 
 app = FastAPI(title="CineAI – Movie Recommender")
 
